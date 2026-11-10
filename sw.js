@@ -1,10 +1,17 @@
 
 /*
- * 熊爸找車位 V2.1
+ * 熊爸找車位 V2.2
  * Service Worker
+ *
+ * 功能：
+ * 1. APP 安裝資源快取
+ * 2. 網路優先更新
+ * 3. 離線首頁備援
+ * 4. 清除舊版本快取
+ * 5. 不攔截外部 Cloudflare API
  */
 
-const CACHE = 'bear-parking-shell-v2.1';
+const CACHE = 'bear-parking-shell-v2.2';
 
 const FILES = [
   './index.html',
@@ -40,11 +47,11 @@ self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // 不攔截外部 API
-  if (
+  // 外部 API 不經過本地快取
+  if(
     request.method !== 'GET' ||
     url.origin !== self.location.origin
-  ) {
+  ){
     return;
   }
 
@@ -53,20 +60,31 @@ self.addEventListener('fetch', event => {
       try {
         const response = await fetch(request);
 
-        if (response.ok) {
+        if(response.ok){
           const cache = await caches.open(CACHE);
-          await cache.put(request,response.clone());
+          await cache.put(
+            request,
+            response.clone()
+          );
         }
 
         return response;
+
       } catch(error) {
-        const cached = await caches.match(request);
+        const cached =
+          await caches.match(request);
 
-        if(cached)return cached;
+        if(cached){
+          return cached;
+        }
 
-        if(request.mode==='navigate'){
-          const page=await caches.match('./index.html');
-          if(page)return page;
+        if(request.mode === 'navigate'){
+          const page =
+            await caches.match('./index.html');
+
+          if(page){
+            return page;
+          }
         }
 
         return Response.error();
