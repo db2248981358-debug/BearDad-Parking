@@ -170,15 +170,25 @@ function esc(s){
  }[c]));
 }
 
-function classification(r){
- const p=String(r.parkingstatus??"").trim();
- const c=String(r.cellstatus??"").trim().toUpperCase();
 
- // 暫定映射，尚未取得官方完整代碼表
- if(p==="1" && c==="Y")return "free";
- if(p==="2" && c==="N")return "busy";
- return "unknown";
+function classification(r){
+  const p = String(r.parkingstatus ?? "").trim();
+  const c = String(r.cellstatus ?? "").trim().toUpperCase();
+
+  // V2.0：依照實際對照新北市官方車格地圖修正
+  // 目前屬實測對照，尚非官方完整代碼定義
+
+  if (p === "1" && c === "Y") {
+    return "busy";
+  }
+
+  if (p === "2" && c === "N") {
+    return "free";
+  }
+
+  return "unknown";
 }
+
 
 function color(s){
  return s==="free"?"#17a34a":
