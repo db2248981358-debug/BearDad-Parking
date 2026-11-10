@@ -11,7 +11,7 @@
  * 5. 不攔截 Cloudflare Worker API
  */
 
-const CACHE = 'bear-parking-shell-v1.9';
+const CACHE = 'bear-parking-shell-v2.0';
 
 const FILES = [
   './index.html',
