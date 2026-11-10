@@ -3,79 +3,213 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#287a4e">
-<title>熊爸找車位 V1.7</title>
+<meta name="description" content="熊爸找車位：新北市附近路邊停車格搜尋">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>熊爸找車位 V1.8</title>
 <style>
-body{font-family:system-ui,'Microsoft JhengHei',sans-serif;background:#fbf8e9;color:#253d2d;margin:0}
-header{background:#287a4e;color:white;padding:18px;text-align:center;font-weight:800;font-size:22px}
+*{box-sizing:border-box}
+body{
+  font-family:system-ui,'Microsoft JhengHei',sans-serif;
+  background:#fbf8e9;
+  color:#253d2d;
+  margin:0
+}
+header{
+  background:#287a4e;
+  color:#fff;
+  padding:18px;
+  text-align:center;
+  font-weight:800;
+  font-size:22px
+}
 .wrap{max-width:740px;margin:auto;padding:16px}
-.panel{background:white;border:1px solid #e2e5d8;border-radius:18px;padding:17px;margin-bottom:14px;box-shadow:0 2px 9px #0000000a}
-button,select{font-size:16px;padding:12px;border-radius:12px;border:1px solid #b8c8b9}
-button{background:#287a4e;color:white;font-weight:700;cursor:pointer}
+.panel{
+  background:#fff;
+  border:1px solid #e2e5d8;
+  border-radius:18px;
+  padding:17px;
+  margin-bottom:14px;
+  box-shadow:0 2px 9px #0000000a
+}
+button,select{
+  font-size:16px;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #b8c8b9
+}
+button{
+  background:#287a4e;
+  color:white;
+  font-weight:700;
+  cursor:pointer
+}
 button:disabled{opacity:.55}
 select{background:white}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.muted{color:#68756a;font-size:14px;line-height:1.7}
-.item{padding:13px 0;border-top:1px solid #e5e9e3}
-.tag{display:inline-block;padding:3px 9px;background:#fff2d3;border-radius:99px;font-size:13px}
-.nav{display:inline-block;margin-top:8px;background:#e2f1e6;color:#17693c;text-decoration:none;padding:9px 13px;border-radius:10px;font-weight:700}
-#status{white-space:pre-wrap;line-height:1.7}
+.row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center
+}
+.muted{
+  color:#68756a;
+  font-size:14px;
+  line-height:1.7
+}
+.item{
+  padding:13px 0;
+  border-top:1px solid #e5e9e3
+}
+.tag{
+  display:inline-block;
+  padding:3px 9px;
+  background:#fff2d3;
+  border-radius:99px;
+  font-size:13px
+}
+.nav{
+  display:inline-block;
+  margin-top:8px;
+  background:#e2f1e6;
+  color:#17693c;
+  text-decoration:none;
+  padding:9px 13px;
+  border-radius:10px;
+  font-weight:700
+}
+#status{
+  white-space:pre-wrap;
+  line-height:1.7
+}
 .small{font-size:13px}
+#map{
+  width:100%;
+  height:280px;
+  border:0;
+  border-radius:12px;
+  background:#e8eee4
+}
+a{color:#17693c}
 </style>
 </head>
-<body>
-<header>🚗 熊爸找車位 V1.7</header>
-<main class="wrap">
-<section class="panel">
-<div class="row">
-<label for="radius">搜尋範圍</label>
-<select id="radius">
-<option value="200">200 公尺</option>
-<option value="500" selected>500 公尺</option>
-<option value="1000">1 公里</option>
-<option value="2000">2 公里</option>
-</select>
-<button id="search">📍 定位並搜尋</button>
-<button id="cancel" disabled>停止</button>
-</div>
-<p id="status">準備定位…</p>
-<p class="muted">只查詢新北市政府開放資料。資料按頁分批取得，最多列出附近 200 格一般汽車停車位；未經官方驗證前，不把數字狀態碼宣稱為「確認空位」。</p>
-</section>
-<section class="panel">
-<strong id="count">尚未搜尋</strong>
-<div id="results"></div>
-</section>
-<section class="panel muted">
-政府官方地圖：
-<a href="https://tcdgis.ntpc.gov.tw/public/" target="_blank" rel="noopener">新北市路邊停車空位查詢</a>
-<br>
-資料來源：新北市政府開放資料。GPS 距離為直線距離，並非實際行車距離。政府資料可能有延遲，現場標誌及車位狀態為準。
-</section>
-</main>
-<script>
-const API='https://beardad-parking-api.db2248981358.workers.dev/parking';
-const $=id=>document.getElementById(id);
-let running=false,stop=false,locationPoint=null;
 
-function safe(s){
-  return String(s??'').replace(/[&<>"']/g,c=>({
-    '&':'&amp;',
-    '<':'&lt;',
-    '>':'&gt;',
-    '"':'&quot;',
-    "'":'&#39;'
-  }[c]))
+<body>
+<header>🚗 熊爸找車位 V1.8</header>
+
+<main class="wrap">
+
+<section class="panel">
+  <div class="row">
+    <label for="radius">搜尋範圍</label>
+
+    <select id="radius">
+      <option value="200">200 公尺</option>
+      <option value="500" selected>500 公尺</option>
+      <option value="1000">1 公里</option>
+      <option value="2000">2 公里</option>
+    </select>
+
+    <button id="search">📍 定位並搜尋</button>
+    <button id="cancel" disabled>停止</button>
+  </div>
+
+  <p id="status">準備定位…</p>
+
+  <p class="muted">
+    政府資料分頁查詢，最多顯示附近 200 格一般汽車停車位。
+    狀態碼尚未驗證前，不宣稱為確認空位。
+  </p>
+</section>
+
+<section class="panel">
+  <strong>🗺️ 附近地圖</strong>
+
+  <p class="muted">
+    GPS 定位後顯示目前位置與搜尋範圍。
+  </p>
+
+  <iframe
+    id="map"
+    title="附近地圖"
+    loading="lazy">
+  </iframe>
+
+  <p>
+    <a
+      id="osm"
+      href="https://www.openstreetmap.org/"
+      target="_blank"
+      rel="noopener">
+      開啟大地圖
+    </a>
+  </p>
+</section>
+
+<section class="panel">
+  <strong id="count">尚未搜尋</strong>
+  <div id="results"></div>
+</section>
+
+<section class="panel muted">
+  官方地圖：
+  <a
+    href="https://tcdgis.ntpc.gov.tw/public/"
+    target="_blank"
+    rel="noopener">
+    新北市路邊停車查詢
+  </a>
+
+  <p>
+    GPS 距離為直線距離；
+    現場標誌及車格狀態為準。
+    查詢時間不代表地磁感測器更新時間。
+  </p>
+</section>
+
+</main>
+
+<script>
+'use strict';
+
+const API =
+  'https://beardad-parking-api.db2248981358.workers.dev/parking';
+
+const $ = id => document.getElementById(id);
+
+let running = false;
+let stop = false;
+
+function safe(s) {
+  return String(s ?? '').replace(
+    /[&<>"']/g,
+    c => ({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#39;'
+    }[c])
+  );
 }
 
-function gps(){
-  return new Promise((resolve,reject)=>{
-    if(!navigator.geolocation)
-      return reject(Error('瀏覽器不支援 GPS'));
+function gps() {
+  return new Promise((resolve,reject) => {
+
+    if (!navigator.geolocation) {
+      return reject(
+        Error('瀏覽器不支援 GPS')
+      );
+    }
+
     navigator.geolocation.getCurrentPosition(
-      p=>resolve({
+      p => resolve({
         lat:p.coords.latitude,
-        lon:p.coords.longitude
+        lon:p.coords.longitude,
+        accuracy:p.coords.accuracy
       }),
       reject,
       {
@@ -83,129 +217,288 @@ function gps(){
         timeout:16000,
         maximumAge:15000
       }
-    )
-  })
+    );
+  });
 }
 
-function render(items,done){
-  const all=[...items.values()]
-    .sort((a,b)=>a.distance-b.distance)
+function mapUpdate(lat,lon,radius) {
+
+  const delta = radius / 111000;
+
+  const dlon =
+    delta /
+    Math.max(
+      .1,
+      Math.cos(lat * Math.PI / 180)
+    );
+
+  const bbox = [
+    lon-dlon,
+    lat-delta,
+    lon+dlon,
+    lat+delta
+  ].join(',');
+
+  $('map').src =
+    'https://www.openstreetmap.org/export/embed.html' +
+    '?bbox=' + encodeURIComponent(bbox) +
+    '&layer=mapnik' +
+    '&marker=' +
+    encodeURIComponent(lat+','+lon);
+
+  $('osm').href =
+    'https://www.openstreetmap.org/#map/16/' +
+    lat + '/' + lon;
+}
+
+function render(items,done) {
+
+  const all = [...items.values()]
+    .sort((a,b) => a.distance-b.distance)
     .slice(0,200);
 
-  $('count').textContent=
-    `附近一般汽車格 ${all.length} 筆${done?'（搜尋完成）':'（搜尋中）'}｜最多顯示 200 筆`;
+  $('count').textContent =
+    `附近一般汽車格 ${all.length} 筆` +
+    `${done?'（搜尋完成）':'（搜尋中）'}` +
+    `｜最多顯示 200 筆`;
 
-  $('results').innerHTML=all.map(r=>{
-    const dest=`${r.latitude},${r.longitude}`;
-    const link=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}&travelmode=driving`;
+  $('results').innerHTML =
+    all.map(r => {
 
-    return `<article class="item">
-      <b>${safe(r.roadname||'未提供道路')}｜車格 ${safe(r.cellid)}</b>
-      <span class="tag">${r.distance} 公尺</span>
-      <div class="small muted">
-        狀態碼 ${safe(r.parkingstatus)}（未驗證空位意義）｜
-        ${safe(r.paycash||'未提供收費')}
-      </div>
-      <a class="nav" target="_blank" rel="noopener" href="${link}">Google Maps 導航</a>
-    </article>`;
-  }).join('')||'<p class="muted">目前批次沒有找到符合範圍的一般汽車格。尚未完成所有頁面時，不代表附近沒有車格。</p>';
+      const dest =
+        `${r.latitude},${r.longitude}`;
+
+      const link =
+        'https://www.google.com/maps/dir/?api=1' +
+        '&destination=' +
+        encodeURIComponent(dest) +
+        '&travelmode=driving';
+
+      return `
+        <article class="item">
+          <b>
+            ${safe(r.roadname||'未提供道路')}
+            ｜車格 ${safe(r.cellid)}
+          </b>
+
+          <span class="tag">
+            ${Number(r.distance)||0} 公尺
+          </span>
+
+          <div class="small muted">
+            狀態碼 ${safe(r.parkingstatus)}
+            （未驗證空位意義）
+            ｜
+            ${safe(r.paycash||'未提供收費')}
+          </div>
+
+          <a
+            class="nav"
+            target="_blank"
+            rel="noopener"
+            href="${link}">
+            Google Maps 導航
+          </a>
+        </article>
+      `;
+    }).join('') ||
+    '<p class="muted">' +
+    '目前尚未找到符合範圍的一般汽車格；' +
+    '掃描未完成前不代表附近沒有車格。' +
+    '</p>';
 }
 
-async function search(){
-  if(running)return;
-  running=true;
-  stop=false;
-  $('search').disabled=true;
-  $('cancel').disabled=false;
+async function search() {
 
-  const items=new Map();
-  let scanned=0,pages=0,complete=false;
+  if (running) return;
 
-  try{
-    $('status').textContent='正在取得 GPS 定位…';
-    locationPoint=await gps();
+  running = true;
+  stop = false;
 
-    const {lat,lon}=locationPoint;
-    const radius=Number($('radius').value);
+  $('search').disabled = true;
+  $('cancel').disabled = false;
 
-    $('status').textContent=`已定位，開始查詢 ${radius} 公尺內車格…`;
+  const items = new Map();
 
-    let page=1;
+  let scanned = 0;
+  let pages = 0;
+  let complete = false;
 
-    while(page&&!stop){
-      const u=new URL(API);
-      for(const [k,v] of Object.entries({lat,lon,radius,page}))
+  try {
+
+    $('status').textContent =
+      '正在取得 GPS 定位…';
+
+    const {
+      lat,
+      lon,
+      accuracy
+    } = await gps();
+
+    if (stop) return;
+
+    const radius =
+      Number($('radius').value);
+
+    mapUpdate(lat,lon,radius);
+
+    $('status').textContent =
+      `GPS 定位成功（精度約 ` +
+      `${Math.round(accuracy)} 公尺），` +
+      `開始查詢 ${radius} 公尺內車格…`;
+
+    let page = 1;
+
+    while (page && !stop) {
+
+      const u = new URL(API);
+
+      for (
+        const [k,v] of Object.entries({
+          lat,
+          lon,
+          radius,
+          page
+        })
+      ) {
         u.searchParams.set(k,v);
+      }
 
-      const controller=new AbortController();
-      const timer=setTimeout(()=>controller.abort(),24000);
+      const controller =
+        new AbortController();
+
+      const timer = setTimeout(
+        () => controller.abort(),
+        24000
+      );
 
       let r;
-      try{
-        r=await fetch(u,{
+
+      try {
+        r = await fetch(u,{
           cache:'no-store',
           signal:controller.signal
-        })
-      }finally{
-        clearTimeout(timer)
+        });
+      } finally {
+        clearTimeout(timer);
       }
 
-      if(!r.ok){
-        let msg='';
-        try{msg=JSON.stringify(await r.json())}catch{}
-        throw Error(`Worker HTTP ${r.status} ${msg.slice(0,180)}`)
+      if (!r.ok) {
+
+        let msg = '';
+
+        try {
+          msg = JSON.stringify(
+            await r.json()
+          );
+        } catch {}
+
+        throw Error(
+          `Worker HTTP ${r.status} ` +
+          msg.slice(0,180)
+        );
       }
 
-      const obj=await r.json();
-      if(!Array.isArray(obj.data))
-        throw Error('Worker 回傳格式不符合 V1.7');
+      const obj = await r.json();
 
-      for(const row of obj.data){
-        if(row.id)items.set(row.id,row)
+      if (!Array.isArray(obj.data)) {
+        throw Error(
+          'Worker 回傳格式不符合 V1.7 / V1.8'
+        );
       }
 
-      scanned+=Number(obj.recordsScanned||0);
-      pages+=Number(obj.pagesRead||0);
-      complete=!!obj.complete;
+      for (const row of obj.data) {
+        if (row.id) {
+          items.set(row.id,row);
+        }
+      }
+
+      scanned +=
+        Number(obj.recordsScanned||0);
+
+      pages +=
+        Number(obj.pagesRead||0);
+
+      complete = !!obj.complete;
 
       render(items,complete);
 
-      $('status').textContent=
-        `已掃描 ${scanned.toLocaleString()} 筆／${pages} 頁；附近找到 ${items.size} 格一般汽車格。${complete?'資料頁面掃描完成。':'繼續查詢…'}`;
+      $('status').textContent =
+        `已掃描 ${scanned.toLocaleString()} 筆` +
+        `／${pages} 頁；附近找到 ` +
+        `${items.size} 格一般汽車格。` +
+        (complete
+          ? '資料頁面掃描完成。'
+          : '繼續查詢…');
 
-      page=obj.nextPage;
-      if(!page)break;
+      page = obj.nextPage;
 
-      // 200 筆是顯示上限，不是只查前 200 筆
-      await new Promise(resolve=>setTimeout(resolve,60));
+      if (!page) break;
+
+      await new Promise(
+        resolve => setTimeout(resolve,60)
+      );
     }
 
-    if(stop)
-      $('status').textContent+=
-        '\n已手動停止；目前為部分搜尋結果。';
-    else if(!complete)
-      $('status').textContent+=
-        '\n注意：政府資料仍未掃描完成，結果可能不完整。';
-    else
-      $('status').textContent+=
-        '\n注意：停車狀態碼尚未核實，以上不能視為已確認空位。';
+    if (stop) {
+      $('status').textContent +=
+        '\n已手動停止，目前僅為部分結果。';
+    } else if (!complete) {
+      $('status').textContent +=
+        '\n注意：資料尚未全部掃描完成，結果可能不完整。';
+    } else {
+      $('status').textContent +=
+        '\n注意：狀態碼尚未核實，以上不能視為已確認空位。';
+    }
 
-  }catch(e){
-    $('status').textContent=
-      `讀取失敗：${e.message||e}\n請確認定位權限、網路及 Cloudflare Worker V1.7 是否已部署。`;
-  }finally{
-    running=false;
-    $('search').disabled=false;
-    $('cancel').disabled=true;
+  } catch(e) {
+
+    $('status').textContent =
+      `讀取失敗：${e.message||e}\n` +
+      '請確認 GPS 權限、網路及 Worker V1.7 是否已部署。';
+
+  } finally {
+
+    running = false;
+
+    $('search').disabled = false;
+    $('cancel').disabled = true;
   }
 }
 
-$('search').addEventListener('click',search);
-$('cancel').addEventListener('click',()=>{stop=true});
-$('radius').addEventListener('change',()=>{
-  if(!running)search()
-});
-window.addEventListener('load',search);
+$('search').addEventListener(
+  'click',
+  search
+);
+
+$('cancel').addEventListener(
+  'click',
+  () => {
+    stop = true;
+  }
+);
+
+$('radius').addEventListener(
+  'change',
+  () => {
+    if (!running) search();
+  }
+);
+
+window.addEventListener(
+  'load',
+  search
+);
+
+// 恢復 Android PWA 安裝功能
+if (
+  'serviceWorker' in navigator &&
+  location.protocol === 'https:'
+) {
+  navigator.serviceWorker
+    .register('./sw.js')
+    .catch(console.warn);
+}
 </script>
 </body>
 </html>
