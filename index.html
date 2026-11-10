@@ -4,238 +4,550 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>熊爸找車位 V1.4</title>
+<title>熊爸找車位 V1.5</title>
 <meta name="theme-color" content="#287b49">
-<meta name="description" content="開啟即定位，搜尋新北市附近政府回報路邊空車格">
+<meta name="description" content="新北市路邊停車格 GPS 搜尋工具">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <style>
-:root{font-family:system-ui,'Noto Sans TC',sans-serif;color:#253328;background:#f7f6ed}
-*{box-sizing:border-box}
-body{margin:0}
-.wrap{max-width:680px;margin:auto;padding:18px 16px 90px}
-header{display:flex;justify-content:space-between;align-items:center}
-h1{font-size:23px;margin:5px 0}
-small,.muted{color:#68786c}
-.tag{background:#e1efdf;color:#28633a;padding:6px 9px;border-radius:30px;font-size:12px}
-.card{background:white;border:1px solid #e0e7d9;border-radius:18px;padding:16px;margin-top:14px;box-shadow:0 2px 10px #30402009}
-button,select{font:inherit}
-button{border:0;border-radius:12px;padding:13px 16px;background:#287b49;color:white;font-weight:700;cursor:pointer}
-button:disabled{opacity:.55}
-button.secondary{background:#e7f1e8;color:#22613b}
-.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.row>*{flex:1}
-select{width:100%;border:1px solid #d2ddce;background:white;border-radius:10px;padding:11px}
-.status{font-size:14px;line-height:1.65}
-.big{font-size:32px;font-weight:800;color:#257846}
-.item{padding:13px 0;border-top:1px solid #edf0e9}
-.item:first-child{border-top:0}
-.item h3{margin:0 0 6px;font-size:17px}
-.item p{margin:5px 0;color:#68786c;font-size:13px}
-.actions{display:flex;gap:8px;margin-top:9px}
-.actions button{flex:1;padding:11px}
-.warning{background:#fff6df;border-color:#ead7a2}
-.error{color:#ad4130}
-.ok{color:#26764a}
-.hidden{display:none}
-.dot{width:8px;height:8px;background:#33a66b;display:inline-block;border-radius:50%}
-#map{width:100%;height:265px;border:0;border-radius:12px;background:#e8eee4}
-a{color:#247047}
-footer{margin-top:20px;font-size:12px;color:#7a867b;line-height:1.7}
+:root {
+  font-family: system-ui,"Noto Sans TC",sans-serif;
+  color:#253328;
+  background:#f7f6ed;
+}
+* {box-sizing:border-box}
+body {margin:0}
+.wrap {max-width:680px;margin:auto;padding:18px 16px 80px}
+header {display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1 {font-size:24px;margin:5px 0}
+small,.muted {color:#68786c}
+.tag {
+  background:#e1efdf;color:#28633a;
+  border-radius:30px;padding:6px 9px;font-size:12px
+}
+.card {
+  background:#fff;border:1px solid #e0e7d9;
+  border-radius:18px;padding:16px;margin-top:14px;
+}
+.row {display:flex;gap:9px;flex-wrap:wrap}
+.row>* {flex:1}
+button,select {font:inherit}
+button {
+  background:#287b49;color:#fff;border:0;
+  border-radius:12px;padding:13px 12px;
+  font-weight:700;cursor:pointer
+}
+button.secondary {background:#e7f1e8;color:#22613b}
+button:disabled {opacity:.5}
+select {
+  display:block;width:100%;margin-top:8px;
+  padding:12px;border:1px solid #d2ddce;
+  border-radius:10px;background:#fff
+}
+.status {font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+.ok {color:#26764a}
+.error {color:#b33b2c}
+.warning {background:#fff6df;border-color:#ead7a2}
+.item {padding:14px 0;border-top:1px solid #edf0e9}
+.item:first-child {border-top:0}
+.item h3 {margin:0 0 7px;font-size:17px}
+.item p {margin:5px 0;font-size:13px;color:#68786c}
+.big {font-size:29px;font-weight:800;color:#257846}
+#map {
+  width:100%;height:270px;border:0;
+  border-radius:12px;background:#e8eee4
+}
+a {color:#247047}
+footer {font-size:12px;color:#7a867b;line-height:1.7;margin-top:20px}
 </style>
 </head>
 <body>
 <main class="wrap">
+
 <header>
-<div>
-<small>下班回家 · 一鍵找空位</small>
-<h1>🚗 熊爸找車位</h1>
-</div>
-<span class="tag">V1.4 PWA 新北版</span>
+  <div>
+    <small>下班回家 · 一鍵找車位</small>
+    <h1>🚗 熊爸找車位</h1>
+  </div>
+  <span class="tag">V1.5 新北版</span>
 </header>
 
 <section class="card">
-<div class="row">
-<button id="locate">📍 重新定位並搜尋</button>
-<button class="secondary" id="refresh">↻ 更新車位</button>
-</div>
-<p class="status" id="gps">正在等待 GPS 定位…</p>
-<label for="radius"><b>搜尋半徑</b></label>
-<select id="radius">
-<option value="200">200 公尺</option>
-<option value="500">500 公尺</option>
-<option value="1000" selected>1 公里（預設）</option>
-<option value="2000">2 公里</option>
-</select>
+  <div class="row">
+    <button id="locate">📍 重新定位並搜尋</button>
+    <button id="refresh" class="secondary">↻ 更新車位</button>
+  </div>
+  <p id="gps" class="status">等待 GPS 定位…</p>
+  <label for="radius"><b>搜尋半徑</b></label>
+  <select id="radius">
+    <option value="200">200 公尺</option>
+    <option value="500">500 公尺</option>
+    <option value="1000" selected>1 公里（預設）</option>
+    <option value="2000">2 公里</option>
+  </select>
 </section>
 
 <section class="card">
-<b>🗺️ 目前位置與附近區域</b>
-<p class="muted" style="font-size:13px">地圖會依 GPS 自動置中並依搜尋半徑調整範圍。</p>
-<iframe id="map" title="GPS 附近地圖" loading="lazy"></iframe>
-<p>
-<a id="osm" target="_blank" rel="noopener" href="https://www.openstreetmap.org/">開啟大地圖</a>
-　·　
-<a href="https://tcdgis.ntpc.gov.tw/public/" target="_blank" rel="noopener">新北市官方停車地圖</a>
-</p>
+  <b>🗺️ 目前位置與附近區域</b>
+  <p class="status muted">GPS 定位後，自動置中並調整搜尋範圍。</p>
+  <iframe id="map" title="附近地圖" loading="lazy"></iframe>
+  <p class="status">
+    <a id="osm" href="https://www.openstreetmap.org/"
+       target="_blank" rel="noopener">開啟大地圖</a>
+    ·
+    <a href="https://tcdgis.ntpc.gov.tw/public/"
+       target="_blank" rel="noopener">新北市官方停車地圖</a>
+  </p>
 </section>
 
 <section class="card">
-<div class="row" style="justify-content:space-between">
-<b>🟢 附近政府回報空車格</b>
-<span id="count" class="tag">尚未查詢</span>
-</div>
-<p id="api" class="status muted">尚未讀取官方資料</p>
-<div id="results"></div>
+  <div class="row">
+    <b>🟢 附近可確認空車格</b>
+    <span id="count" class="tag">尚未查詢</span>
+  </div>
+  <p id="api" class="status muted">等待資料讀取…</p>
+  <div id="results"></div>
 </section>
 
 <section class="card warning">
-<b>安裝到手機桌面</b>
-<p class="status">請先將本資料夾部署至 HTTPS 網址，使用手機 Chrome 開啟，選單選擇「安裝應用程式」或「新增至主畫面」。直接點開下載的 HTML 檔案不能完整啟用 PWA。網路中斷時僅可開啟已快取的介面，不會提供舊空位作為即時結果。</p>
+  <b>🔍 API 連線診斷</b>
+  <p id="diagnostic" class="status">
+    尚未測試 Cloudflare Worker
+  </p>
+  <button id="test" class="secondary">測試 Worker 連線</button>
+  <p class="status">
+    <a href="https://beardad-parking-api.db2248981358.workers.dev/parking"
+       target="_blank" rel="noopener">直接開啟 Worker JSON</a>
+  </p>
 </section>
 
 <section class="card warning">
-<b>資料準確度說明</b>
-<p class="status">本工具只使用新北市政府路邊停車資料。空位可能在更新後被停走；目前僅能確認「政府回報狀態」，不能保證到場仍有車位。若官方 API 無法讀取或欄位無法辨識，會明確顯示錯誤，不會提供虛構車位。</p>
+  <b>⚠️ 資料判讀與使用限制</b>
+  <p class="status">
+    本版本只使用新北市政府資料。
+    一般車格與身障專用格會分開辨識。
+    parkingstatus 數字碼尚未完成官方定義驗證，
+    因此不會把未知狀態誤認為空位。
+    政府回報狀態不保證抵達時仍有車位。
+    距離為直線距離，不是實際行車距離。
+  </p>
 </section>
 
 <footer>
-資料來源：
-<a href="https://data.ntpc.gov.tw/datasets/54A507C4-C038-41B5-BF60-BBECB9D052C6" target="_blank" rel="noopener">新北市政府開放資料「路邊停車空位查詢」</a>。
-定位需瀏覽器允許位置權限；本機 HTML 或瀏覽器跨網域限制可能導致資料無法取得，屆時需改用 HTTPS 後端代理。這是 PWA 串接測試版，尚未通過端到端官方 API 驗收。
+  資料來源：新北市政府路邊停車空位開放資料。
+  資料透過 Cloudflare Worker 取得。
+  本機讀取時間不代表感測器更新時間。
 </footer>
+
 </main>
 
 <script>
-const API='https://data.ntpc.gov.tw/api/datasets/54a507c4-c038-41b5-bf60-bbecb9d052c6/json';
-let here=null,all=[],lastFetch=0;
-const $=id=>document.getElementById(id);
-const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const pick=(o,keys)=>{
-let lower={};
-for(let k in o)lower[k.toLowerCase()]=o[k];
-for(let k of keys)if(lower[k.toLowerCase()]!==undefined)return lower[k.toLowerCase()];
-return null
-};
-const num=x=>{let n=Number(x);return Number.isFinite(n)?n:null};
+"use strict";
 
-function distance(a,b,c,d){
-let R=6371000,r=Math.PI/180,x=(c-a)*r,y=(d-b)*r;
-let h=Math.sin(x/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(y/2)**2;
-return 2*R*Math.asin(Math.sqrt(h))
+const VERSION = "1.5";
+
+const API =
+  "https://beardad-parking-api.db2248981358.workers.dev/parking";
+
+const $ = id => document.getElementById(id);
+
+let here = null;
+let all = [];
+let loaded = false;
+let requestId = 0;
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    c => ({
+      "&":"&amp;",
+      "<":"&lt;",
+      ">":"&gt;",
+      '"':"&quot;",
+      "'":"&#39;"
+    }[c])
+  );
 }
 
-function rowsOf(v){
-if(Array.isArray(v))return v;
-if(v&&typeof v==='object'){
-for(let k of ['data','Data','result','Result','records','Records','items'])
-if(Array.isArray(v[k]))return v[k];
-for(let x of Object.values(v))if(Array.isArray(x))return x
-}
-return []
-}
-
-function norm(o){
-let lat=num(pick(o,['latitude','lat','y','wgs84y'])),
-lon=num(pick(o,['longitude','lon','lng','x','wgs84x']));
-if(!lat||!lon||lat<20||lat>27||lon<118||lon>123)return null;
-let status=pick(o,['parkingstatus','cellstatus','status','available','isavailable']);
-let name=pick(o,['roadname','road','road_name','location','address','cellname','parkingname'])||'新北市路邊車格';
-let id=pick(o,['cellid','cell_id','id','parkingid','cellno'])||'';
-return {lat,lon,status,name,id,raw:o}
+function distance(a,b,c,d) {
+  const rad = Math.PI/180;
+  const x = (c-a)*rad;
+  const y = (d-b)*rad;
+  const h =
+    Math.sin(x/2)**2 +
+    Math.cos(a*rad)*Math.cos(c*rad)*
+    Math.sin(y/2)**2;
+  return 12742000*Math.asin(Math.sqrt(h));
 }
 
-function isFree(x){
-let v=String(x.status??'').trim().toLowerCase();
-return ['空','空位','可停','available','free'].includes(v)
+function rowsOf(json) {
+  if (Array.isArray(json)) return json;
+
+  if (json && typeof json === "object") {
+    for (const key of [
+      "data","Data","result","Result",
+      "records","Records","items"
+    ]) {
+      if (Array.isArray(json[key])) return json[key];
+    }
+  }
+  return [];
 }
 
-function render(){
-if(!here)return;
-let r=+$('radius').value;
-let nearby=all.filter(x=>isFree(x)&&distance(here.lat,here.lon,x.lat,x.lon)<=r)
-.map(x=>({...x,dist:distance(here.lat,here.lon,x.lat,x.lon)}))
-.sort((a,b)=>a.dist-b.dist);
-$('count').textContent=nearby.length+' 格';
-$('results').innerHTML=nearby.length?
-nearby.slice(0,30).map((x,i)=>`
-<div class="item">
-<h3>${i+1}. ${escapeHTML(x.name)}</h3>
-<div class="big">${Math.round(x.dist)} <small>公尺（直線）</small></div>
-<p>車格編號：${escapeHTML(x.id||'未提供')} · 政府回報狀態：${escapeHTML(x.status)}</p>
-<div class="actions">
-<button onclick="nav(${x.lat},${x.lon})">🧭 Google Maps 導航</button>
-</div>
-</div>`).join(''):
-'<p class="status muted">目前半徑內沒有可確認的空車格，或來源尚未成功讀取。可擴大搜尋範圍。</p>'
+function normalize(o) {
+  if (!o || typeof o !== "object") return null;
+
+  const lat = Number(o.latitude);
+  const lon = Number(o.longitude);
+
+  if (!Number.isFinite(lat) ||
+      !Number.isFinite(lon) ||
+      lat < 20 || lat > 27 ||
+      lon < 118 || lon > 123) return null;
+
+  return {
+    lat,
+    lon,
+    name:String(o.name ?? ""),
+    road:String(o.roadname ?? ""),
+    id:String(o.cellid ?? o.id ?? ""),
+    status:String(o.parkingstatus ?? ""),
+    cellstatus:String(o.cellstatus ?? ""),
+    pay:String(o.paycash ?? o.pay ?? ""),
+    memo:String(o.memo ?? "")
+  };
 }
 
-function nav(lat,lon){
-window.open('https://www.google.com/maps/dir/?api=1&destination='+lat+','+lon+'&travelmode=driving','_blank','noopener')
+function isNormalCarSpace(x) {
+  return x.name.trim() === "汽車停車位";
 }
 
-function map(){
-if(!here)return;
-let r=+$('radius').value,delta=r/111000,lat=here.lat,lon=here.lon,
-dlon=delta/Math.cos(lat*Math.PI/180);
-$('map').src=`https://www.openstreetmap.org/export/embed.html?bbox=${lon-dlon}%2C${lat-delta}%2C${lon+dlon}%2C${lat+delta}&layer=mapnik&marker=${lat}%2C${lon}`;
-$('osm').href=`https://www.openstreetmap.org/#map/${r<=200?18:r<=500?17:r<=1000?16:15}/${lat}/${lon}`;
-render()
+/*
+ * 安全設計：
+ * 尚未確認新北市 parkingstatus 1～5
+ * 的完整官方定義。
+ *
+ * 目前不把任何數字狀態碼
+ * 直接宣稱為「空位」。
+ *
+ * 等確認狀態對照後再修改此函式。
+ */
+function isConfirmedFree(x) {
+  const s = x.status.trim().toLowerCase();
+  return [
+    "空位",
+    "空",
+    "可停",
+    "available",
+    "free"
+  ].includes(s);
 }
 
-async function fetchData(){
-if(!here){$('api').textContent='請先允許 GPS 定位';return}
-$('api').textContent='正在連線新北市政府官方資料…';
-$('refresh').disabled=true;
-try{
-let ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),16000);
-let resp;
-try{
-resp=await fetch(API,{signal:ctrl.signal,cache:'no-store',headers:{'Accept':'application/json'}})
-}finally{clearTimeout(timeout)}
-if(!resp.ok)throw Error('HTTP '+resp.status);
-let json=await resp.json(),rows=rowsOf(json);
-if(!rows.length)throw Error('回傳資料格式不符或沒有紀錄');
-let normalized=rows.map(norm).filter(Boolean),
-recognized=normalized.filter(x=>x.status!==null);
-if(!recognized.length)throw Error('無法辨識政府資料的車格狀態欄位');
-all=recognized;
-lastFetch=Date.now();
-let frees=all.filter(isFree).length;
-$('api').innerHTML=`<span class="ok">● 已取得 ${all.length} 筆有狀態與座標的車格資料</span><br>其中可辨識空位 ${frees} 筆 · 本機讀取：${new Date().toLocaleTimeString('zh-TW')}<br><small>注意：本機讀取時間不等於政府感測器更新時間。數字狀態碼尚未核實，暫不列為空位；必須先核對官方欄位定義。</small>`;
-render()
-}catch(e){
-all=[];
-$('count').textContent='無資料';
-$('results').innerHTML='';
-$('api').innerHTML='<span class="error">讀取失敗：'+escapeHTML(e.message)+'</span><br>可能是瀏覽器 CORS、網路、API 不可用或欄位格式差異。此版本不會假裝已有即時車格。';
-}finally{$('refresh').disabled=false}
+function mapUpdate() {
+  if (!here) return;
+
+  const radius = Number($("radius").value);
+  const delta = radius/111000;
+  const lat = here.lat;
+  const lon = here.lon;
+  const dlon = delta/Math.cos(lat*Math.PI/180);
+
+  const bbox = [
+    lon-dlon,
+    lat-delta,
+    lon+dlon,
+    lat+delta
+  ].join(",");
+
+  $("map").src =
+    "https://www.openstreetmap.org/export/embed.html" +
+    "?bbox=" + encodeURIComponent(bbox) +
+    "&layer=mapnik" +
+    "&marker=" + encodeURIComponent(lat+","+lon);
+
+  const zoom =
+    radius<=200 ? 18 :
+    radius<=500 ? 17 :
+    radius<=1000 ? 16 : 15;
+
+  $("osm").href =
+    "https://www.openstreetmap.org/#map/" +
+    zoom+"/"+lat+"/"+lon;
+
+  render();
 }
 
-function locate(){
-if(!navigator.geolocation){$('gps').textContent='此瀏覽器不支援定位';return}
-$('gps').textContent='正在取得目前 GPS 位置…';
-$('locate').disabled=true;
-navigator.geolocation.getCurrentPosition(p=>{
-here={lat:p.coords.latitude,lon:p.coords.longitude};
-$('gps').innerHTML=`<span class="dot"></span> 定位成功 · 精度約 ${Math.round(p.coords.accuracy)} 公尺`;
-map();
-fetchData();
-$('locate').disabled=false
-},e=>{
-$('gps').textContent='定位失敗：'+e.message+'。請確認 Chrome 定位權限，並使用 HTTPS 網站開啟。';
-$('locate').disabled=false
-},{enableHighAccuracy:true,timeout:15000,maximumAge:0})
+function render() {
+  if (!here) return;
+
+  if (!loaded) {
+    $("count").textContent = "尚未取得資料";
+    return;
+  }
+
+  const radius = Number($("radius").value);
+
+  const nearby = all
+    .filter(isNormalCarSpace)
+    .map(x => ({
+      ...x,
+      dist:distance(
+        here.lat,here.lon,x.lat,x.lon
+      )
+    }))
+    .filter(x => x.dist <= radius)
+    .sort((a,b) => a.dist-b.dist);
+
+  const confirmed = nearby.filter(isConfirmedFree);
+
+  $("count").textContent =
+    confirmed.length+" 格已確認空位";
+
+  if (confirmed.length) {
+    $("results").innerHTML =
+      confirmed.slice(0,30).map((x,i) => {
+        const url =
+          "https://www.google.com/maps/dir/?api=1" +
+          "&destination=" +
+          encodeURIComponent(x.lat+","+x.lon) +
+          "&travelmode=driving";
+
+        return `
+          <div class="item">
+            <h3>${i+1}. ${escapeHTML(x.road)}</h3>
+            <div class="big">
+              ${Math.round(x.dist)}
+              <small>公尺（直線）</small>
+            </div>
+            <p>車格：${escapeHTML(x.id)}</p>
+            <p>狀態：${escapeHTML(x.status)}</p>
+            <p>費率：${escapeHTML(x.pay||"未提供")}</p>
+            <p>
+              <a href="${url}"
+                 target="_blank" rel="noopener">
+                🧭 Google Maps 導航
+              </a>
+            </p>
+          </div>`;
+      }).join("");
+  } else {
+    $("results").innerHTML = `
+      <p class="status muted">
+        已取得 ${all.length} 筆車格資料。
+        目前資料中有 ${nearby.length}
+        筆一般汽車格位於搜尋半徑內。
+      </p>
+      <p class="status">
+        但政府數字狀態碼尚未完成驗證，
+        因此暫不宣稱這些車格有空位。
+        這不代表附近一定沒有空車格。
+      </p>
+    `;
+  }
 }
 
-$('locate').onclick=locate;
-$('refresh').onclick=fetchData;
-$('radius').onchange=map;
+async function getJSON(url, timeoutMs=30000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(
+    () => ctrl.abort(),timeoutMs
+  );
+
+  try {
+    const resp = await fetch(url,{
+      method:"GET",
+      mode:"cors",
+      cache:"no-store",
+      signal:ctrl.signal,
+      headers:{"Accept":"application/json"}
+    });
+
+    if (!resp.ok) {
+      throw new Error("HTTP "+resp.status);
+    }
+
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function testWorker() {
+  $("diagnostic").textContent =
+    "正在測試 Cloudflare Worker…";
+
+  $("test").disabled = true;
+
+  try {
+    const json = await getJSON(API,30000);
+    const rows = rowsOf(json);
+
+    if (!rows.length) {
+      throw new Error(
+        "Worker 有回應，但未找到車格陣列"
+      );
+    }
+
+    $("diagnostic").innerHTML =
+      '<span class="ok">● Worker 連線成功</span>' +
+      "<p>收到 "+rows.length+" 筆 JSON 紀錄</p>" +
+      "<p>來源：Cloudflare Worker</p>" +
+      "<p>測試時間："+escapeHTML(
+        new Date().toLocaleString("zh-TW")
+      )+"</p>";
+
+  } catch(e) {
+    $("diagnostic").innerHTML =
+      '<span class="error">Worker 測試失敗：' +
+      escapeHTML(e.message) +
+      "</span><p>請截圖這個錯誤訊息。</p>";
+  } finally {
+    $("test").disabled = false;
+  }
+}
+
+async function fetchData() {
+  if (!here) {
+    $("api").textContent =
+      "請先允許 GPS 定位";
+    return;
+  }
+
+  const thisRequest = ++requestId;
+
+  $("refresh").disabled = true;
+  $("api").textContent =
+    "正在透過 Cloudflare Worker 讀取政府資料…";
+
+  try {
+    const json = await getJSON(API,30000);
+    const rows = rowsOf(json);
+
+    if (!rows.length) {
+      throw new Error(
+        "Worker 回傳內容沒有車格資料"
+      );
+    }
+
+    const normalized =
+      rows.map(normalize).filter(Boolean);
+
+    if (!normalized.length) {
+      throw new Error(
+        "JSON 有資料，但座標欄位無法辨識"
+      );
+    }
+
+    if (thisRequest !== requestId) return;
+
+    all = normalized;
+    loaded = true;
+
+    const normal =
+      all.filter(isNormalCarSpace).length;
+
+    const statusCounts = {};
+
+    for (const x of all) {
+      const key = x.status || "未提供";
+      statusCounts[key] =
+        (statusCounts[key] || 0)+1;
+    }
+
+    $("api").innerHTML =
+      '<span class="ok">● Worker 資料讀取成功</span>' +
+      "<p>收到 "+all.length+" 筆有效車格資料</p>" +
+      "<p>一般汽車格："+normal+" 筆</p>" +
+      "<p>狀態碼分布："+escapeHTML(
+        JSON.stringify(statusCounts)
+      )+"</p>" +
+      "<p>讀取時間："+escapeHTML(
+        new Date().toLocaleString("zh-TW")
+      )+"</p>" +
+      '<p class="muted">注意：目前 Worker ' +
+      '可能只回傳部分頁面資料，' +
+      '不能視為全新北市完整結果。</p>';
+
+    render();
+
+  } catch(e) {
+    if (thisRequest !== requestId) return;
+
+    all = [];
+    loaded = false;
+
+    $("count").textContent = "讀取失敗";
+    $("results").innerHTML = "";
+
+    $("api").innerHTML =
+      '<span class="error">讀取失敗：' +
+      escapeHTML(e.message) +
+      "</span>" +
+      "<p>請按下方「測試 Worker 連線」，" +
+      "並提供錯誤訊息。</p>";
+
+  } finally {
+    if (thisRequest === requestId) {
+      $("refresh").disabled = false;
+    }
+  }
+}
+
+function locate() {
+  if (!navigator.geolocation) {
+    $("gps").textContent =
+      "此瀏覽器不支援 GPS 定位";
+    return;
+  }
+
+  $("locate").disabled = true;
+  $("gps").textContent =
+    "正在取得目前 GPS 位置…";
+
+  navigator.geolocation.getCurrentPosition(
+    p => {
+      here = {
+        lat:p.coords.latitude,
+        lon:p.coords.longitude
+      };
+
+      $("gps").innerHTML =
+        '<span class="ok">● GPS 定位成功</span>' +
+        " · 精度約 "+
+        Math.round(p.coords.accuracy)+" 公尺";
+
+      $("locate").disabled = false;
+
+      mapUpdate();
+      fetchData();
+    },
+    e => {
+      $("gps").innerHTML =
+        '<span class="error">定位失敗：' +
+        escapeHTML(e.message)+"</span>";
+
+      $("locate").disabled = false;
+    },
+    {
+      enableHighAccuracy:true,
+      timeout:15000,
+      maximumAge:0
+    }
+  );
+}
+
+$("locate").onclick = locate;
+$("refresh").onclick = fetchData;
+$("test").onclick = testWorker;
+$("radius").onchange = mapUpdate;
+
 locate();
 
-if('serviceWorker' in navigator && location.protocol==='https:'){
-navigator.serviceWorker.register('./sw.js').catch(()=>{});
+if ("serviceWorker" in navigator &&
+    location.protocol === "https:") {
+  navigator.serviceWorker
+    .register("./sw.js")
+    .catch(console.warn);
 }
 </script>
 </body>
