@@ -10,7 +10,7 @@
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<header>🚗 熊爸找車位 V1.9</header>
+<title>熊爸找車位 V2.1</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -71,8 +71,9 @@ select{background:white}
 </style>
 </head>
 <body>
-<header>🚗 熊爸找車位 V1.9</header>
+<header>🚗 熊爸找車位 V2.1</header>
 <main>
+
 <section class="panel">
  <div class="row">
   <label for="radius">搜尋範圍</label>
@@ -101,17 +102,21 @@ select{background:white}
    <b id="unknownCount">0</b><small>其他／未知</small>
   </div>
  </div>
+
  <div class="legend">
   <span><i class="dot green"></i>疑似空位</span>
   <span><i class="dot red"></i>疑似占用</span>
   <span><i class="dot gray"></i>未知狀態</span>
   <span><i class="dot blue"></i>我的位置</span>
  </div>
+
  <div id="map"></div>
+
  <p class="muted">
-  地圖標記來自政府車格座標，並非直接嵌入官方網站。
-  綠色是依原始狀態碼推測，尚未完成官方定義驗證。
-  不代表抵達時一定可停。
+  地圖以 GPS 為中心，預設顯示周圍約 150 公尺。
+  可手動縮放與拖曳查看其他車格。
+  車格顏色依已實測的狀態碼對照顯示，
+  實際空位仍以現場狀況為準。
  </p>
 </section>
 
@@ -142,6 +147,7 @@ select{background:white}
  資料集標示每 2 分鐘更新，但實際資料新鮮度可能不同。
  請依現場標誌與實際占用狀況停車。
 </section>
+
 </main>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -170,25 +176,17 @@ function esc(s){
  }[c]));
 }
 
-
+// V2.0 已由使用者實際對照官方地圖修正
+// V2.1 完整保留這個判斷
 function classification(r){
-  const p = String(r.parkingstatus ?? "").trim();
-  const c = String(r.cellstatus ?? "").trim().toUpperCase();
+ const p=String(r.parkingstatus??"").trim();
+ const c=String(r.cellstatus??"").trim().toUpperCase();
 
-  // V2.0：依照實際對照新北市官方車格地圖修正
-  // 目前屬實測對照，尚非官方完整代碼定義
+ if(p==="1" && c==="Y")return "busy";
+ if(p==="2" && c==="N")return "free";
 
-  if (p === "1" && c === "Y") {
-    return "busy";
-  }
-
-  if (p === "2" && c === "N") {
-    return "free";
-  }
-
-  return "unknown";
+ return "unknown";
 }
-
 
 function color(s){
  return s==="free"?"#17a34a":
@@ -214,7 +212,9 @@ function initMap(){
    "地圖元件載入失敗，請檢查網路連線。";
   return;
  }
+
  map=L.map("map").setView([25.01,121.51],13);
+
  L.tileLayer(
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
@@ -222,29 +222,46 @@ function initMap(){
    attribution:"© OpenStreetMap contributors"
   }
  ).addTo(map);
+
  markerLayer=L.layerGroup().addTo(map);
 }
 
+// V2.1：只調整地圖預設視野，不影響搜尋範圍
 function updateLocation(){
  if(!map||!here)return;
- const radius=Number($("radius").value);
+
+ const searchRadius=Number($("radius").value);
+ const viewRadius=150;
  const pos=[here.lat,here.lon];
 
  if(meMarker)map.removeLayer(meMarker);
  if(rangeCircle)map.removeLayer(rangeCircle);
 
  meMarker=L.circleMarker(pos,{
-  radius:9,color:"#fff",weight:3,
-  fillColor:"#2775d6",fillOpacity:1
+  radius:9,
+  color:"#fff",
+  weight:3,
+  fillColor:"#2775d6",
+  fillOpacity:1
  }).addTo(map).bindPopup("我的 GPS 位置");
 
+ // 搜尋範圍仍依選單設定
  rangeCircle=L.circle(pos,{
-  radius,color:"#287a4e",
-  weight:1,fillOpacity:.04
+  radius:searchRadius,
+  color:"#287a4e",
+  weight:1,
+  fillOpacity:.04
  }).addTo(map);
 
- map.fitBounds(rangeCircle.getBounds(),{
-  padding:[18,18],maxZoom:18
+ // 地圖只依 150 公尺範圍決定縮放比例
+ const viewCircle=L.circle(pos,{
+  radius:viewRadius
+ });
+
+ map.fitBounds(viewCircle.getBounds(),{
+  padding:[12,12],
+  maxZoom:19,
+  animate:false
  });
 }
 
@@ -254,6 +271,7 @@ function getGPS(){
    reject(Error("瀏覽器不支援 GPS"));
    return;
   }
+
   navigator.geolocation.getCurrentPosition(
    p=>resolve({
     lat:p.coords.latitude,
@@ -272,6 +290,7 @@ function getGPS(){
 
 function selectedRows(){
  const filter=$("filter").value;
+
  const rows=[...all.values()]
   .sort((a,b)=>Number(a.distance)-Number(b.distance))
   .slice(0,200);
@@ -283,6 +302,7 @@ function selectedRows(){
 
 function render(){
  if(!map)return;
+
  markerLayer.clearLayers();
 
  const closest=[...all.values()]
@@ -290,7 +310,10 @@ function render(){
   .slice(0,200);
 
  const counts={free:0,busy:0,unknown:0};
- closest.forEach(r=>counts[classification(r)]++);
+
+ closest.forEach(r=>{
+  counts[classification(r)]++;
+ });
 
  $("freeCount").textContent=counts.free;
  $("busyCount").textContent=counts.busy;
@@ -300,10 +323,11 @@ function render(){
 
  for(const r of rows){
   const s=classification(r);
+
   const popup=`
    <strong>${esc(r.roadname||"未提供道路")}</strong>
    <div>車格編號：${esc(r.cellid)}</div>
-   <div>狀態：${stateName(s)}（暫定）</div>
+   <div>狀態：${stateName(s)}（實測對照）</div>
    <div>原始碼：${esc(r.parkingstatus)}
     ／${esc(r.cellstatus)}</div>
    <div>距離：${Math.round(Number(r.distance))} 公尺</div>
@@ -311,6 +335,7 @@ function render(){
    <a href="${navURL(r)}" target="_blank"
     rel="noopener">🧭 Google Maps 導航</a>
   `;
+
   L.circleMarker(
    [Number(r.latitude),Number(r.longitude)],
    {
@@ -329,6 +354,7 @@ function render(){
 
  $("list").innerHTML=rows.slice(0,50).map(r=>{
   const s=classification(r);
+
   return `
    <div class="item">
     <span class="dot ${s==="free"?"green":
@@ -352,6 +378,7 @@ function render(){
 
 async function startSearch(reuseGPS=false){
  if(running)return;
+
  running=true;
  stop=false;
  completed=false;
@@ -368,6 +395,7 @@ async function startSearch(reuseGPS=false){
   if(!reuseGPS||!here){
    here=await getGPS();
   }
+
   if(stop)return;
 
   updateLocation();
@@ -378,22 +406,29 @@ async function startSearch(reuseGPS=false){
 
   while(page&&!stop){
    const u=new URL(API);
+
    for(const [k,v] of Object.entries({
-    lat:here.lat,lon:here.lon,radius,page
+    lat:here.lat,
+    lon:here.lon,
+    radius,
+    page
    })){
     u.searchParams.set(k,String(v));
    }
 
-   activeController=new AbortController();
+   const controller=new AbortController();
+   activeController=controller;
+
    const timer=setTimeout(
-    ()=>activeController?.abort(),24000
+    ()=>controller.abort(),24000
    );
 
    let response;
+
    try{
     response=await fetch(u,{
      cache:"no-store",
-     signal:activeController.signal
+     signal:controller.signal
     });
    }finally{
     clearTimeout(timer);
@@ -402,15 +437,18 @@ async function startSearch(reuseGPS=false){
 
    if(!response.ok){
     let detail="";
+
     try{
      detail=JSON.stringify(await response.json());
     }catch{}
+
     throw Error(
      "Worker HTTP "+response.status+" "+detail.slice(0,150)
     );
    }
 
    const obj=await response.json();
+
    if(!Array.isArray(obj.data)){
     throw Error("Worker 回傳格式不符合 V1.7 API");
    }
@@ -431,6 +469,7 @@ async function startSearch(reuseGPS=false){
     (completed?"掃描完成。":"繼續搜尋…");
 
    page=obj.nextPage;
+
    if(!page)break;
   }
 
@@ -440,12 +479,14 @@ async function startSearch(reuseGPS=false){
    $("status").textContent+="\n尚未完整掃描所有資料頁。";
   }else{
    $("status").textContent+=
-    "\n綠色僅為暫定空位判讀，尚未完成官方驗證。";
+    "\n車格狀態已依官方地圖實測對照，實際空位以現場為準。";
   }
 
  }catch(e){
   $("status").textContent=
-   "搜尋失敗："+(e.message||e);
+   stop
+    ?"已停止搜尋，資料可能不完整。"
+    :"搜尋失敗："+(e.message||e);
  }finally{
   running=false;
   $("search").disabled=false;
@@ -457,11 +498,14 @@ async function startSearch(reuseGPS=false){
 
 $("search").onclick=()=>startSearch(false);
 $("refresh").onclick=()=>startSearch(true);
+
 $("cancel").onclick=()=>{
  stop=true;
  activeController?.abort();
 };
+
 $("filter").onchange=render;
+
 $("radius").onchange=()=>{
  if(!running)startSearch(true);
 };
