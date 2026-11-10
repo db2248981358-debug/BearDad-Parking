@@ -10,7 +10,7 @@
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>熊爸找車位 V2.2</title>
+<title>熊爸找車位 V2.3</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -75,8 +75,7 @@ select{background:white}
 </head>
 
 <body>
-<header>🚗 熊爸找車位 V2.2</header>
-
+<header>🚗 熊爸找車位 V2.3</header>
 <main>
 
 <section class="panel">
@@ -121,10 +120,10 @@ select{background:white}
  <div id="map"></div>
 
  <p class="muted">
-  地圖以 GPS 為中心，預設顯示周圍約 75 公尺。
-  可用手指縮放或拖曳地圖查看其他車格。
-  紅綠顏色依實際對照官方地圖的狀態碼顯示，
-  空位仍以現場狀況為準。
+  地圖以 GPS 為中心，預設視野約為周圍 75 公尺。
+  可以用手指縮放或拖曳地圖。
+  車格狀態依官方地圖實測對照，
+  實際空位以現場狀況為準。
  </p>
 </section>
 
@@ -167,7 +166,7 @@ const API =
 
 const $=id=>document.getElementById(id);
 
-// V2.2 地圖預設視野半徑，單位：公尺
+// V2.3：地圖預設視野半徑，單位公尺
 const DEFAULT_MAP_VIEW_RADIUS=75;
 
 let map,markerLayer,meMarker,rangeCircle;
@@ -190,8 +189,7 @@ function esc(s){
  }[c]));
 }
 
-// V2.0 已實際對照官方車格地圖
-// V2.2 保留已驗證的紅綠對應關係
+// 保留 V2.0 已實測的車格狀態對照
 function classification(r){
  const p=String(r.parkingstatus??"").trim();
  const c=String(r.cellstatus??"").trim().toUpperCase();
@@ -216,7 +214,6 @@ function navURL(r){
  const dest=encodeURIComponent(
   r.latitude+","+r.longitude
  );
-
  return "https://www.google.com/maps/dir/?api=1"+
   "&destination="+dest+
   "&travelmode=driving";
@@ -242,8 +239,7 @@ function initMap(){
  markerLayer=L.layerGroup().addTo(map);
 }
 
-// V2.2 地圖顯示半徑由 150m 改為 75m
-// 車格實際搜尋範圍維持原本選單設定
+// V2.3 修正：不再對未加入地圖的圓圈呼叫 getBounds()
 function updateLocation(){
  if(!map||!here)return;
 
@@ -253,7 +249,6 @@ function updateLocation(){
  if(meMarker)map.removeLayer(meMarker);
  if(rangeCircle)map.removeLayer(rangeCircle);
 
- // GPS 藍色位置點
  meMarker=L.circleMarker(pos,{
   radius:9,
   color:"#fff",
@@ -262,7 +257,7 @@ function updateLocation(){
   fillOpacity:1
  }).addTo(map).bindPopup("我的 GPS 位置");
 
- // 綠色淡圈：實際搜尋範圍
+ // 保留原本的搜尋半徑顯示
  rangeCircle=L.circle(pos,{
   radius:searchRadius,
   color:"#287a4e",
@@ -270,12 +265,29 @@ function updateLocation(){
   fillOpacity:.04
  }).addTo(map);
 
- // 只用來計算畫面縮放的 75 公尺視野
- const viewCircle=L.circle(pos,{
-  radius:DEFAULT_MAP_VIEW_RADIUS
- });
+ // 直接依 GPS 計算 75 公尺的經緯度範圍
+ const earthRadius=6378137;
+ const latRad=here.lat*Math.PI/180;
 
- map.fitBounds(viewCircle.getBounds(),{
+ const latOffset=
+  DEFAULT_MAP_VIEW_RADIUS/earthRadius*180/Math.PI;
+
+ const lonOffset=
+  DEFAULT_MAP_VIEW_RADIUS/
+  (earthRadius*Math.cos(latRad))*180/Math.PI;
+
+ const bounds=L.latLngBounds(
+  [
+   here.lat-latOffset,
+   here.lon-lonOffset
+  ],
+  [
+   here.lat+latOffset,
+   here.lon+lonOffset
+  ]
+ );
+
+ map.fitBounds(bounds,{
   padding:[12,12],
   maxZoom:19,
   animate:false
@@ -443,7 +455,6 @@ async function startSearch(reuseGPS=false){
 
   if(stop)return;
 
-  // 定位後，地圖自動以 75 公尺視野顯示
   updateLocation();
   render();
 
