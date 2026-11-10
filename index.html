@@ -3,14 +3,13 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#287a4e">
-<meta name="description" content="熊爸找車位：新北市路邊空位與公共停車場">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<title>熊爸找車位 V2.5</title>
+<title>熊爸找車位 V2.6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#faf8e9;color:#24382b;font-family:system-ui,"Microsoft JhengHei",sans-serif}
@@ -38,21 +37,21 @@ select{background:white}
 .stat{flex:1;min-width:85px;background:#f5f8f1;border-radius:12px;text-align:center;padding:10px}
 .stat b{display:block;font-size:23px}
 .stat small{font-size:12px;color:#68776b}
+.park{border-left:4px solid #2775d6;padding-left:12px}
+.parkTitle{font-size:16px;font-weight:800}
+.avail{font-size:19px;font-weight:800;color:#178746}
+.parkPin{background:#2775d6;color:white;border:2px solid white;border-radius:8px;font-weight:800;text-align:center;line-height:26px;box-shadow:0 1px 5px #777}
 .leaflet-popup-content{line-height:1.6}
 .leaflet-popup-content a{color:#17683c;font-weight:bold}
-.park{border-left:4px solid #2775d6;padding-left:12px}
-.parkTitle{font-weight:800;font-size:16px}
-.avail{font-weight:800;color:#178746;font-size:19px}
-.parkPin{background:#2775d6;color:white;border:2px solid white;border-radius:8px;font-weight:800;text-align:center;line-height:24px;box-shadow:0 1px 5px #777}
 </style>
 </head>
 <body>
-<header>🚗 熊爸找車位 V2.5</header>
+<header>🚗 熊爸找車位 V2.6</header>
 <main>
 
 <section class="panel">
  <div class="row">
-  <label for="radius">搜尋範圍</label>
+  <label for="radius">路邊搜尋範圍</label>
   <select id="radius">
    <option value="200">200 公尺</option>
    <option value="500" selected>500 公尺</option>
@@ -69,19 +68,21 @@ select{background:white}
  <div class="stats">
   <div class="stat"><b id="freeCount">0</b><small>空位</small></div>
   <div class="stat"><b id="busyCount">0</b><small>佔用</small></div>
-  <div class="stat"><b id="unknownCount">0</b><small>其他／未知</small></div>
+  <div class="stat"><b id="unknownCount">0</b><small>未知</small></div>
  </div>
  <div class="legend">
-  <span><i class="dot green"></i>空位</span>
-  <span><i class="dot red"></i>佔用</span>
+  <span><i class="dot green"></i>路邊空位</span>
+  <span><i class="dot red"></i>路邊佔用</span>
   <span><i class="dot gray"></i>未知</span>
-  <span><i class="dot blue"></i>公有停車場 P／我的位置</span>
+  <span><i class="dot blue"></i>我的位置</span>
+  <span>🅿️ 汽車停車場</span>
  </div>
  <div id="map"></div>
  <p class="muted">
-  地圖預設視野約為周圍 80 公尺，可自由縮放。
-  路邊車格最多顯示最近 100 格。
-  停車狀態與實際剩餘數量可能隨時變動。
+  地圖預設顯示 GPS 周圍約 80 公尺。
+  路邊車格最多顯示最近 100 格；
+  公共汽車停車場獨立搜尋 5 公里。
+  可縮放地圖查看較遠停車場。
  </p>
 </section>
 
@@ -92,21 +93,20 @@ select{background:white}
 </section>
 
 <section class="panel">
- <strong>🅿️ 附近公有停車場</strong>
+ <strong>🅿️ 附近汽車停車場</strong>
  <p id="parkStatus" class="muted">尚未查詢</p>
  <div id="parkList"></div>
 </section>
 
 <section class="panel muted">
  <p><a href="https://tcdgis.ntpc.gov.tw/public/" target="_blank" rel="noopener">新北市官方路邊停車地圖</a></p>
- <p><a href="https://www.parkinginfo.ntpc.gov.tw/parkingrealInfo/" target="_blank" rel="noopener">新北市官方公有停車場查詢</a></p>
+ <p><a href="https://www.parkinginfo.ntpc.gov.tw/parkingrealInfo/" target="_blank" rel="noopener">新北市官方停車場即時資訊</a></p>
  資料來源：新北市政府開放資料。
  地圖使用 OpenStreetMap。距離為直線距離。
- 公有停車場剩餘數量以政府資料為準，未提供即時數據者不顯示為空位。
+ 汽車剩餘車位以政府資料為準；沒有即時資料不代表沒有空位。
 </section>
 
 </main>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 "use strict";
@@ -114,10 +114,9 @@ select{background:white}
 const BASE="https://beardad-parking-api.db2248981358.workers.dev";
 const ROAD_API=BASE+"/parking";
 const PARK_API=BASE+"/carparks";
-
-const DEFAULT_MAP_VIEW_RADIUS=80;
+const MAP_RADIUS=80;
+const PARK_RADIUS=5000;
 const MAX_RESULTS=100;
-const MAX_SEARCH_RADIUS=1000;
 const $=id=>document.getElementById(id);
 
 let map,roadLayer,parkLayer,meMarker,rangeCircle;
@@ -125,6 +124,7 @@ let here=null,running=false,stop=false;
 let all=new Map(),parks=[];
 let completed=false,scanned=0,pages=0;
 let activeController=null;
+let searchId=0;
 
 function esc(s){
  return String(s??"").replace(/[&<>"']/g,c=>({
@@ -141,14 +141,14 @@ function classification(r){
  return "unknown";
 }
 
-function color(s){
- return s==="free"?"#17a34a":
-        s==="busy"?"#e43e3e":"#87939a";
-}
-
 function stateName(s){
  return s==="free"?"空位":
-        s==="busy"?"佔用":"未知／其他";
+  s==="busy"?"佔用":"未知";
+}
+
+function color(s){
+ return s==="free"?"#17a34a":
+  s==="busy"?"#e43e3e":"#87939a";
 }
 
 function navURL(lat,lon){
@@ -159,7 +159,7 @@ function navURL(lat,lon){
 
 function initMap(){
  if(typeof L==="undefined"){
-  $("status").textContent="地圖元件載入失敗，請檢查網路。";
+  $("status").textContent="地圖元件載入失敗";
   return;
  }
  map=L.map("map").setView([25.01,121.51],13);
@@ -173,7 +173,8 @@ function initMap(){
 
 function updateLocation(){
  if(!map||!here)return;
- const radius=Math.min(Number($("radius").value),MAX_SEARCH_RADIUS);
+
+ const radius=Number($("radius").value);
  const pos=[here.lat,here.lon];
 
  if(meMarker)map.removeLayer(meMarker);
@@ -189,18 +190,14 @@ function updateLocation(){
  }).addTo(map);
 
  const earthRadius=6378137;
- const latRad=here.lat*Math.PI/180;
- const latOffset=DEFAULT_MAP_VIEW_RADIUS/earthRadius*180/Math.PI;
- const lonOffset=DEFAULT_MAP_VIEW_RADIUS/
-  (earthRadius*Math.cos(latRad))*180/Math.PI;
+ const latOffset=MAP_RADIUS/earthRadius*180/Math.PI;
+ const lonOffset=MAP_RADIUS/
+  (earthRadius*Math.cos(here.lat*Math.PI/180))*180/Math.PI;
 
- const bounds=L.latLngBounds(
+ map.fitBounds(L.latLngBounds(
   [here.lat-latOffset,here.lon-lonOffset],
   [here.lat+latOffset,here.lon+lonOffset]
- );
- map.fitBounds(bounds,{
-  padding:[12,12],maxZoom:19,animate:false
- });
+ ),{padding:[12,12],maxZoom:19,animate:false});
 }
 
 function getGPS(){
@@ -223,8 +220,8 @@ function getGPS(){
 function closestRows(){
  return [...all.values()]
   .filter(r=>
-   Number.isFinite(Number(r.distance)) &&
-   Number.isFinite(Number(r.latitude)) &&
+   Number.isFinite(Number(r.distance))&&
+   Number.isFinite(Number(r.latitude))&&
    Number.isFinite(Number(r.longitude))
   )
   .sort((a,b)=>Number(a.distance)-Number(b.distance))
@@ -237,23 +234,10 @@ function renderRoad(){
 
  const closest=closestRows();
  const counts={free:0,busy:0,unknown:0};
- closest.forEach(r=>counts[classification(r)]++);
-
- $("freeCount").textContent=counts.free;
- $("busyCount").textContent=counts.busy;
- $("unknownCount").textContent=counts.unknown;
 
  for(const r of closest){
   const s=classification(r);
-  const popup=`
-   <strong>${esc(r.roadname||"未提供道路")}</strong>
-   <div>車格編號：${esc(r.cellid)}</div>
-   <div>狀態：${stateName(s)}</div>
-   <div>距離：${Math.round(Number(r.distance))} 公尺</div>
-   <div>收費：${esc(r.paycash||"未提供")}</div>
-   <a href="${navURL(r.latitude,r.longitude)}"
-      target="_blank" rel="noopener">🧭 導航</a>
-  `;
+  counts[s]++;
 
   L.circleMarker(
    [Number(r.latitude),Number(r.longitude)],
@@ -261,13 +245,25 @@ function renderRoad(){
     radius:7,color:"#fff",weight:1.5,
     fillColor:color(s),fillOpacity:.95
    }
-  ).bindPopup(popup).addTo(roadLayer);
+  ).bindPopup(`
+   <strong>${esc(r.roadname||"未提供道路")}</strong>
+   <div>車格編號：${esc(r.cellid)}</div>
+   <div>狀態：${stateName(s)}</div>
+   <div>距離：${Math.round(Number(r.distance))} 公尺</div>
+   <div>收費：${esc(r.paycash||"未提供")}</div>
+   <a href="${navURL(r.latitude,r.longitude)}"
+    target="_blank" rel="noopener">🧭 導航</a>
+  `).addTo(roadLayer);
  }
+
+ $("freeCount").textContent=counts.free;
+ $("busyCount").textContent=counts.busy;
+ $("unknownCount").textContent=counts.unknown;
 
  const free=closest.filter(r=>classification(r)==="free");
 
  $("total").textContent=
-  `最近 ${closest.length} 格中，有 ${free.length} 格空位`+
+  `最近 ${closest.length} 格中有 ${free.length} 格空位`+
   (completed?"（掃描完成）":"（掃描中）");
 
  $("list").innerHTML=free.map(r=>`
@@ -280,35 +276,38 @@ function renderRoad(){
     ${esc(r.paycash||"未提供收費")}
    </div>
    <a class="nav" href="${navURL(r.latitude,r.longitude)}"
-      target="_blank" rel="noopener">🧭 導航</a>
+    target="_blank" rel="noopener">🧭 導航</a>
   </div>
  `).join("")||
- "<p class='muted'>目前沒有符合條件的空位車格。</p>";
+ "<p class='muted'>目前沒有符合條件的路邊空位。</p>";
+}
+
+function validCarpark(p){
+ return Number(p.totalCar)>0&&
+  Number.isFinite(Number(p.latitude))&&
+  Number.isFinite(Number(p.longitude));
 }
 
 function renderParks(){
  if(!map)return;
  parkLayer.clearLayers();
 
- const rows=parks.filter(r=>
-  Number.isFinite(Number(r.latitude)) &&
-  Number.isFinite(Number(r.longitude))
- );
+ const rows=parks.filter(validCarpark);
 
  for(const p of rows){
-  const available=p.availableCar;
   const hasLive=p.hasRealtime&&
-   available!==null&&Number.isFinite(Number(available));
+   p.availableCar!==null&&
+   Number.isFinite(Number(p.availableCar));
 
   const value=hasLive
-   ? Number(available)+" 格"
-   : "無即時資料";
+   ? Number(p.availableCar)+" 格"
+   :"無即時資料";
 
   const icon=L.divIcon({
    className:"",
-   html:"<div class='parkPin' style='width:30px;height:28px'>P</div>",
-   iconSize:[30,28],
-   iconAnchor:[15,14]
+   html:"<div class='parkPin' style='width:30px;height:30px'>P</div>",
+   iconSize:[30,30],
+   iconAnchor:[15,15]
   });
 
   L.marker(
@@ -316,13 +315,14 @@ function renderParks(){
    {icon}
   ).bindPopup(`
    <strong>${esc(p.name)}</strong>
-   <div>剩餘汽車車位：${esc(value)}</div>
+   <div>汽車剩餘：${esc(value)}</div>
+   <div>汽車總格數：${esc(p.totalCar)}</div>
    <div>地址：${esc(p.address)}</div>
    <div>距離：${esc(p.distance)} 公尺</div>
    <div>收費：${esc(p.payex||"未提供")}</div>
    <div>開放時間：${esc(p.serviceTime||"未提供")}</div>
    <a href="${navURL(p.latitude,p.longitude)}"
-      target="_blank" rel="noopener">🧭 導航</a>
+    target="_blank" rel="noopener">🧭 導航</a>
   `).addTo(parkLayer);
  }
 
@@ -330,35 +330,33 @@ function renderParks(){
   const hasLive=p.hasRealtime&&
    p.availableCar!==null&&
    Number.isFinite(Number(p.availableCar));
-
-  const available=hasLive
+  const value=hasLive
    ? Number(p.availableCar)+" 格"
-   : "無即時資料";
+   :"無即時資料";
 
   return `
    <div class="item park">
-    <div class="parkTitle">🅿️ ${esc(p.name||"未命名停車場")}</div>
-    <div>剩餘車位：
-     <span class="avail">${esc(available)}</span>
+    <div class="parkTitle">🅿️ ${esc(p.name)}</div>
+    <div>汽車剩餘：
+     <span class="avail">${esc(value)}</span>
     </div>
     <div class="muted">
      距離 ${esc(p.distance)} 公尺｜
-     總車位 ${Number.isFinite(Number(p.totalCar))?
-      esc(p.totalCar):"未提供"}
+     汽車總格數 ${esc(p.totalCar)}
     </div>
     <div class="muted">地址：${esc(p.address||"未提供")}</div>
     <div class="muted">收費：${esc(p.payex||"未提供")}</div>
     <div class="muted">開放時間：${esc(p.serviceTime||"未提供")}</div>
     <a class="nav" href="${navURL(p.latitude,p.longitude)}"
-       target="_blank" rel="noopener">🧭 導航</a>
+     target="_blank" rel="noopener">🧭 導航</a>
    </div>
   `;
  }).join("")||
- "<p class='muted'>搜尋範圍內沒有取得公有停車場資料。</p>";
+ "<p class='muted'>5 公里內沒有取得汽車停車場資料。</p>";
 }
 
-async function loadCarparks(lat,lon,radius){
- $("parkStatus").textContent="正在讀取公有停車場…";
+async function loadCarparks(lat,lon,id){
+ $("parkStatus").textContent="正在讀取 5 公里內汽車停車場…";
  parks=[];
  renderParks();
 
@@ -366,21 +364,30 @@ async function loadCarparks(lat,lon,radius){
   const u=new URL(PARK_API);
   u.searchParams.set("lat",String(lat));
   u.searchParams.set("lon",String(lon));
-  u.searchParams.set("radius",String(radius));
+  u.searchParams.set("radius",String(PARK_RADIUS));
 
   const response=await fetch(u,{cache:"no-store"});
-  if(!response.ok){
+  if(!response.ok)
    throw Error("HTTP "+response.status);
-  }
 
   const obj=await response.json();
-  if(!Array.isArray(obj.data)){
+  if(!Array.isArray(obj.data))
    throw Error("停車場資料格式不正確");
+
+  if(id!==searchId)return;
+
+  const unique=new Map();
+
+  for(const p of obj.data){
+   if(!validCarpark(p))continue;
+   if(!unique.has(String(p.id)))
+    unique.set(String(p.id),p);
   }
 
-  parks=obj.data.sort(
+  parks=[...unique.values()].sort(
    (a,b)=>Number(a.distance)-Number(b.distance)
   );
+
   renderParks();
 
   const liveCount=parks.filter(p=>
@@ -388,24 +395,28 @@ async function loadCarparks(lat,lon,radius){
   ).length;
 
   $("parkStatus").textContent=
-   `附近 ${parks.length} 處停車場，`+
-   `${liveCount} 處提供即時車位資訊。`;
+   `5 公里內取得 ${parks.length} 處汽車停車場，`+
+   `${liveCount} 處提供即時汽車剩餘車位。`;
 
  }catch(e){
-  $("parkStatus").textContent=
-   "公有停車場讀取失敗："+(e.message||e);
+  if(id===searchId)
+   $("parkStatus").textContent=
+    "停車場讀取失敗："+(e.message||e);
  }
 }
 
 async function startSearch(reuseGPS=false){
  if(running)return;
+
  running=true;
  stop=false;
  completed=false;
  all.clear();
+ parks=[];
  scanned=0;
  pages=0;
- parks=[];
+
+ const id=++searchId;
 
  $("search").disabled=true;
  $("refresh").disabled=true;
@@ -414,28 +425,25 @@ async function startSearch(reuseGPS=false){
  $("parkStatus").textContent="等待 GPS 定位…";
 
  try{
-  if(!reuseGPS||!here){
+  if(!reuseGPS||!here)
    here=await getGPS();
-  }
+
   if(stop)return;
 
   updateLocation();
   renderRoad();
 
-  const radius=Math.min(
-   Number($("radius").value),MAX_SEARCH_RADIUS
-  );
+  const radius=Number($("radius").value);
 
-  // 停車場獨立查詢，不阻塞路邊車格
+  // 公有停車場獨立搜尋，不阻塞路邊車格
   const parkPromise=loadCarparks(
-   here.lat,here.lon,radius
+   here.lat,here.lon,id
   );
 
   let page=1;
 
   while(page&&!stop){
    const u=new URL(ROAD_API);
-
    for(const [k,v] of Object.entries({
     lat:here.lat,lon:here.lon,radius,page
    })){
@@ -444,7 +452,6 @@ async function startSearch(reuseGPS=false){
 
    const controller=new AbortController();
    activeController=controller;
-
    const timer=setTimeout(
     ()=>controller.abort(),24000
    );
@@ -460,22 +467,18 @@ async function startSearch(reuseGPS=false){
     activeController=null;
    }
 
-   if(!response.ok){
-    throw Error("路邊車格 API HTTP "+response.status);
-   }
+   if(!response.ok)
+    throw Error("路邊車格 HTTP "+response.status);
 
    const obj=await response.json();
-
-   if(!Array.isArray(obj.data)){
-    throw Error("路邊車格 API 格式不正確");
-   }
+   if(!Array.isArray(obj.data))
+    throw Error("路邊車格格式不正確");
 
    for(const r of obj.data){
     if(!r.id)continue;
     const d=Number(r.distance);
-    if(Number.isFinite(d)&&d>=0&&d<=radius){
+    if(Number.isFinite(d)&&d>=0&&d<=radius)
      all.set(String(r.id),r);
-    }
    }
 
    scanned+=Number(obj.recordsScanned||0);
@@ -486,7 +489,7 @@ async function startSearch(reuseGPS=false){
 
    $("status").textContent=
     `已掃描 ${scanned.toLocaleString()} 筆／${pages} 頁\n`+
-    `搜尋半徑 ${radius} 公尺，找到 ${all.size} 格。\n`+
+    `路邊搜尋半徑 ${radius} 公尺，找到 ${all.size} 格。\n`+
     `地圖顯示最近 ${Math.min(all.size,MAX_RESULTS)} 格。`+
     (completed?"\n掃描完成。":"\n繼續搜尋…");
 
@@ -494,13 +497,12 @@ async function startSearch(reuseGPS=false){
    if(!page)break;
   }
 
-  if(stop){
+  if(stop)
    $("status").textContent+="\n已停止，資料可能不完整。";
-  }else if(!completed){
-   $("status").textContent+="\n尚未完整掃描所有資料頁。";
-  }else{
+  else if(!completed)
+   $("status").textContent+="\n尚未完整掃描。";
+  else
    $("status").textContent+="\n實際空位以現場為準。";
-  }
 
   await parkPromise;
 
